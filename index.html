@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Practical machine learning by dkshort</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-dark.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/dkshort/Practical_Machine_Learning">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/dkshort/Practical_Machine_Learning/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/dkshort/Practical_Machine_Learning/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Practical machine learning</h1>
+          <p>Assignment for Practical Machine Learning</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/dkshort">dkshort</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <hr>
+
+<p>title: "PML Assignment"
+author: "David Short"
+date: "16 July 2016"</p>
+
+<h2>
+<a id="output-html_document" class="anchor" href="#output-html_document" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>output: html_document</h2>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-e">knitr</span><span class="pl-k">::</span><span class="pl-smi">opts_chunk</span><span class="pl-k">$</span>set(<span class="pl-v">echo</span> <span class="pl-k">=</span> <span class="pl-c1">TRUE</span>)</pre></div>
+
+<h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h2>
+
+<p>The task for this assignment is to create a model capable of predicting whether a person is using a piece of exercise equipment correctly, based on data recorded by sensors worn on the body. In this case the exercise equipment was a dumbbell used to perform a biceps curl, with sensors located on the belt, upper arm, forearm and on the dumbbell itself.</p>
+
+<p>The data used relates to the paper"Qualitative Activity Recognition of Weight Lifting Exercises" by Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H.</p>
+
+<p>More information about this paper can be found at <a href="http://groupware.les.inf.puc-rio.br/har#ixzz4EcRDpAYb">http://groupware.les.inf.puc-rio.br/har#ixzz4EcRDpAYb</a>.</p>
+
+<h2>
+<a id="data-download" class="anchor" href="#data-download" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Download</h2>
+
+<p>The training data set was downloaded from <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a>.</p>
+
+<p>A testing data set was also downloaded from <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a>.</p>
+
+<h2>
+<a id="library" class="anchor" href="#library" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Library</h2>
+
+<p>The caret library is used to model data within this assignment. The rattle library is used to show the decision tree model.</p>
+
+<div class="highlight highlight-source-r"><pre>
+library(<span class="pl-smi">caret</span>)
+library(<span class="pl-smi">rattle</span>)
+</pre></div>
+
+<h2>
+<a id="data-selection" class="anchor" href="#data-selection" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Selection</h2>
+
+<p>Exploratory analysis revealed not all columns within the data set were fully populated, with large numbers of NA and !DIV/0 values.  As these sparsely populated columns would produce an unreliable model, these were excluded.</p>
+
+<p>Also excluded were columns that did not appear to be likely to influence the prediction, such as participant and date/time information.</p>
+
+<p>This left us with 52 measurement columns, along with the classe column to be predicted.</p>
+
+<p>The classe column has 5 possible values:</p>
+
+<ul>
+<li>A - exercise performed correctly;</li>
+<li>B - elbows thrown to the front;</li>
+<li>C - dumbbell lifted only halfway;</li>
+<li>D - dumbbell lowered only halfway; and</li>
+<li>E - hips thrown to the front.</li>
+</ul>
+
+<p>The data was segmented into a training set (70%) and a testing set (30%) for model development.</p>
+
+<div class="highlight highlight-source-r"><pre>
+setwd(<span class="pl-s"><span class="pl-pds">"</span>~/R/PML Assignment<span class="pl-pds">"</span></span>)
+<span class="pl-smi">trainingFull</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s"><span class="pl-pds">"</span>pml-training.csv<span class="pl-pds">"</span></span>,<span class="pl-v">stringsAsFactors</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>)
+<span class="pl-smi">trainingFull</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">&lt;-</span> as.factor(<span class="pl-smi">trainingFull</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)
+
+<span class="pl-smi">beltCols</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>roll_belt<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>pitch_belt<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>yaw_belt<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>total_accel_belt<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_belt_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_belt_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_belt_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_belt_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_belt_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_belt_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_belt_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_belt_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_belt_z<span class="pl-pds">"</span></span>)
+
+<span class="pl-smi">armCols</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>roll_arm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>pitch_arm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>yaw_arm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>total_accel_arm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_arm_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_arm_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_arm_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_arm_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_arm_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_arm_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_arm_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_arm_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_arm_z<span class="pl-pds">"</span></span>)
+
+<span class="pl-smi">dumbbellCols</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>roll_dumbbell<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>pitch_dumbbell<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>yaw_dumbbell<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>total_accel_dumbbell<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_dumbbell_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_dumbbell_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_dumbbell_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_dumbbell_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_dumbbell_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_dumbbell_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_dumbbell_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_dumbbell_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_dumbbell_z<span class="pl-pds">"</span></span>)
+
+<span class="pl-smi">forearmCols</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>roll_forearm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>pitch_forearm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>yaw_forearm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>total_accel_forearm<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_forearm_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_forearm_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>gyros_forearm_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_forearm_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_forearm_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>accel_forearm_z<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_forearm_x<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_forearm_y<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>magnet_forearm_z<span class="pl-pds">"</span></span>)
+
+<span class="pl-smi">colsToInclude</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>classe<span class="pl-pds">"</span></span>,<span class="pl-smi">beltCols</span>,<span class="pl-smi">armCols</span>,<span class="pl-smi">dumbbellCols</span>,<span class="pl-smi">forearmCols</span>)
+
+<span class="pl-smi">trainingSubset</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">trainingFull</span>[<span class="pl-smi">colsToInclude</span>]
+
+set.seed(<span class="pl-c1">710</span>)
+<span class="pl-smi">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-smi">trainingSubset</span><span class="pl-k">$</span><span class="pl-smi">classe</span>,<span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.7</span>,<span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">trainingSet</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">trainingSubset</span>[<span class="pl-smi">inTrain</span>,]
+<span class="pl-smi">testingSet</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">trainingSubset</span>[<span class="pl-k">-</span><span class="pl-smi">inTrain</span>,]
+</pre></div>
+
+<h2>
+<a id="fitting-models" class="anchor" href="#fitting-models" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Fitting Models</h2>
+
+<h3>
+<a id="decision-tree" class="anchor" href="#decision-tree" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Decision Tree</h3>
+
+<p>A decision tree model was fitted to the data.</p>
+
+<div class="highlight highlight-source-r"><pre>
+set.seed(<span class="pl-c1">1812</span>)
+<span class="pl-smi">treeFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">classe</span><span class="pl-k">~</span>., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">trainingSet</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rpart<span class="pl-pds">"</span></span>)
+
+
+</pre></div>
+
+<div class="highlight highlight-source-r"><pre>
+<span class="pl-smi">treePred</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">treeFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">testingSet</span>)
+<span class="pl-smi">treeMatrix</span> <span class="pl-k">&lt;-</span> confusionMatrix(<span class="pl-smi">testingSet</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-smi">treePred</span>)
+
+<span class="pl-smi">treeMatrix</span><span class="pl-k">$</span><span class="pl-smi">table</span>
+<span class="pl-smi">treeMatrix</span><span class="pl-k">$</span><span class="pl-smi">overall</span>[<span class="pl-c1">1</span>]
+<span class="pl-smi">treeAccuracyPercent</span> <span class="pl-k">&lt;-</span> sprintf(<span class="pl-s"><span class="pl-pds">"</span>%2.2f<span class="pl-pds">"</span></span>,<span class="pl-smi">treeMatrix</span><span class="pl-k">$</span><span class="pl-smi">overall</span>[<span class="pl-c1">1</span>]<span class="pl-k">*</span><span class="pl-c1">100</span>)
+</pre></div>
+
+<p>This indicated an accuracy of <code>r treeAccuracyPercent</code>%.  This indicates that the model is not particularly useful for predicting the correct conduct of this exercise.</p>
+
+<h3>
+<a id="random-forest" class="anchor" href="#random-forest" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Random Forest</h3>
+
+<p>A random forest model was then fitted to the data.  Cross validation method was used as somewhat more efficient than resampling.</p>
+
+<div class="highlight highlight-source-r"><pre>
+set.seed(<span class="pl-c1">1602</span>)
+<span class="pl-smi">rfFitControl</span> <span class="pl-k">&lt;-</span> trainControl(<span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>,<span class="pl-v">number</span><span class="pl-k">=</span><span class="pl-c1">10</span>)
+<span class="pl-smi">rfFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">classe</span><span class="pl-k">~</span>.,<span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">trainingSet</span>,<span class="pl-v">model</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>,<span class="pl-v">trControl</span><span class="pl-k">=</span><span class="pl-smi">rfFitControl</span>, <span class="pl-v">importance</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)
+
+varImpPlot(<span class="pl-smi">rfFit</span><span class="pl-k">$</span><span class="pl-smi">finalModel</span>)
+</pre></div>
+
+<div class="highlight highlight-source-r"><pre>
+<span class="pl-smi">rfPred</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">rfFit</span>, <span class="pl-v">newdata</span> <span class="pl-k">=</span> <span class="pl-smi">testingSet</span>)
+<span class="pl-smi">rfMatrix</span> <span class="pl-k">&lt;-</span> confusionMatrix(<span class="pl-smi">testingSet</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-smi">rfPred</span>)
+
+<span class="pl-smi">rfMatrix</span><span class="pl-k">$</span><span class="pl-smi">table</span>
+<span class="pl-smi">rfMatrix</span><span class="pl-k">$</span><span class="pl-smi">overall</span>[<span class="pl-c1">1</span>]
+<span class="pl-smi">rfAccuracyPercent</span> <span class="pl-k">&lt;-</span> sprintf(<span class="pl-s"><span class="pl-pds">"</span>%2.2f<span class="pl-pds">"</span></span>,<span class="pl-smi">rfMatrix</span><span class="pl-k">$</span><span class="pl-smi">overall</span>[<span class="pl-c1">1</span>]<span class="pl-k">*</span><span class="pl-c1">100</span>)
+</pre></div>
+
+<p>This indicated an accuracy of <code>r rfAccuracyPercent</code>%.  This therefore appears to be a good model in predicting incorrect use of the dumbbell in this exercise.</p>
+
+<p>We therefore utilised this model to supply the answers for the prediction quiz data.</p>
+
+<div class="highlight highlight-source-r"><pre>
+<span class="pl-smi">testingFull</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s"><span class="pl-pds">"</span>pml-testing.csv<span class="pl-pds">"</span></span>,<span class="pl-v">stringsAsFactors</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>)
+<span class="pl-smi">finalPred</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">rfFit</span>, <span class="pl-v">newdata</span> <span class="pl-k">=</span> <span class="pl-smi">testingFull</span>)
+<span class="pl-smi">finalPred</span> <span class="pl-k">&lt;-</span> <span class="pl-k">data.frame</span>(<span class="pl-smi">finalPred</span>)
+<span class="pl-smi">finalPred</span>
+</pre></div>
+
+<h2>
+<a id="conclustion" class="anchor" href="#conclustion" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Conclustion</h2>
+
+<p>The random Forest model appears to provide an accurate model that could be used to predict whether this exercise has been performed correctly, and if not, which error has occurred.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
