@@ -1,0 +1,148 @@
+---
+title: "PML Assignment"
+author: "David Short"
+date: "16 July 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Introduction
+
+The task for this assignment is to create a model capable of predicting whether a person is using a piece of exercise equipment correctly, based on data recorded by sensors worn on the body. In this case the exercise equipment was a dumbbell used to perform a biceps curl, with sensors located on the belt, upper arm, forearm and on the dumbbell itself.
+
+The data used relates to the paper"Qualitative Activity Recognition of Weight Lifting Exercises" by Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H.
+
+More information about this paper can be found at <http://groupware.les.inf.puc-rio.br/har#ixzz4EcRDpAYb>.
+
+## Data Download
+
+The training data set was downloaded from <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>.
+
+A testing data set was also downloaded from <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>.
+
+## Library
+
+The caret library is used to model data within this assignment. The rattle library is used to show the decision tree model.
+
+``` {r library, warning=FALSE, message=FALSE}
+
+library(caret)
+library(rattle)
+
+```
+
+## Data Selection
+
+Exploratory analysis revealed not all columns within the data set were fully populated, with large numbers of NA and !DIV/0 values.  As these sparsely populated columns would produce an unreliable model, these were excluded.
+
+Also excluded were columns that did not appear to be likely to influence the prediction, such as participant and date/time information.
+
+This left us with 52 measurement columns, along with the classe column to be predicted.
+
+The classe column has 5 possible values:
+
+* A - exercise performed correctly;
+* B - elbows thrown to the front;
+* C - dumbbell lifted only halfway;
+* D - dumbbell lowered only halfway; and
+* E - hips thrown to the front.
+
+The data was segmented into a training set (70%) and a testing set (30%) for model development.
+
+```{r DataSelection}
+
+setwd("~/R/PML Assignment")
+trainingFull <- read.csv("pml-training.csv",stringsAsFactors = FALSE)
+trainingFull$classe <- as.factor(trainingFull$classe)
+
+beltCols <- c("roll_belt","pitch_belt","yaw_belt","total_accel_belt","gyros_belt_x","gyros_belt_y","gyros_belt_z","accel_belt_x","accel_belt_y","accel_belt_z","magnet_belt_x","magnet_belt_y","magnet_belt_z")
+
+armCols <- c("roll_arm","pitch_arm","yaw_arm","total_accel_arm","gyros_arm_x","gyros_arm_y","gyros_arm_z","accel_arm_x","accel_arm_y","accel_arm_z","magnet_arm_x","magnet_arm_y","magnet_arm_z")
+
+dumbbellCols <- c("roll_dumbbell","pitch_dumbbell","yaw_dumbbell","total_accel_dumbbell","gyros_dumbbell_x","gyros_dumbbell_y","gyros_dumbbell_z","accel_dumbbell_x","accel_dumbbell_y","accel_dumbbell_z","magnet_dumbbell_x","magnet_dumbbell_y","magnet_dumbbell_z")
+
+forearmCols <- c("roll_forearm","pitch_forearm","yaw_forearm","total_accel_forearm","gyros_forearm_x","gyros_forearm_y","gyros_forearm_z","accel_forearm_x","accel_forearm_y","accel_forearm_z","magnet_forearm_x","magnet_forearm_y","magnet_forearm_z")
+
+colsToInclude <- c("classe",beltCols,armCols,dumbbellCols,forearmCols)
+
+trainingSubset <- trainingFull[colsToInclude]
+
+set.seed(710)
+inTrain <- createDataPartition(trainingSubset$classe,p=0.7,list=FALSE)
+trainingSet <- trainingSubset[inTrain,]
+testingSet <- trainingSubset[-inTrain,]
+
+```
+
+## Fitting Models
+
+### Decision Tree
+
+A decision tree model was fitted to the data.
+
+```{r decisionTreeModel, warning=FALSE, message=FALSE}
+
+set.seed(1812)
+treeFit <- train(classe~., data=trainingSet, method="rpart")
+
+
+
+```
+
+``` {r decisionTreeTesting}
+
+treePred <- predict(treeFit, newdata=testingSet)
+treeMatrix <- confusionMatrix(testingSet$classe, treePred)
+
+treeMatrix$table
+treeMatrix$overall[1]
+treeAccuracyPercent <- sprintf("%2.2f",treeMatrix$overall[1]*100)
+
+```
+
+This indicated an accuracy of `r treeAccuracyPercent`%.  This indicates that the model is not particularly useful for predicting the correct conduct of this exercise.
+
+### Random Forest
+
+A random forest model was then fitted to the data.  Cross validation method was used as somewhat more efficient than resampling.
+
+```{r randomForestModel, warning=FALSE, message=FALSE}
+
+set.seed(1602)
+rfFitControl <- trainControl(method="cv",number=10)
+rfFit <- train(classe~.,data=trainingSet,model="rf",trControl=rfFitControl, importance=TRUE)
+
+varImpPlot(rfFit$finalModel)
+ 
+```
+
+
+``` {r randomForestTesting}
+
+rfPred <- predict(rfFit, newdata = testingSet)
+rfMatrix <- confusionMatrix(testingSet$classe, rfPred)
+
+rfMatrix$table
+rfMatrix$overall[1]
+rfAccuracyPercent <- sprintf("%2.2f",rfMatrix$overall[1]*100)
+
+```
+
+This indicated an accuracy of `r rfAccuracyPercent`%.  This therefore appears to be a good model in predicting incorrect use of the dumbbell in this exercise.
+
+We therefore utilised this model to supply the answers for the prediction quiz data.
+
+``` {r finalTest}
+
+testingFull <- read.csv("pml-testing.csv",stringsAsFactors = FALSE)
+finalPred <- predict(rfFit, newdata = testingFull)
+finalPred <- data.frame(finalPred)
+finalPred
+
+```
+
+## Conclustion
+
+The random Forest model appears to provide an accurate model that could be used to predict whether this exercise has been performed correctly, and if not, which error has occurred.
